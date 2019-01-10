@@ -7,50 +7,46 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
 
-    var myArray = [Category]()
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    let realm = try! Realm()
+    var categories: Results<Category>?
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadItems()
+        loadCategories()
     }
 
     //MARK: - TableView Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return myArray.count
+        return categories?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-        let item = myArray[indexPath.row]
-        cell.textLabel?.text = item.name
+
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet"
         return cell
     }
     
     //MARK: - Data Manipulation Methods
     
-    func saveItems() {
+    func save(category: Category) {
         do {
-            try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         } catch {
             print("Error saving context \(error)")
         }
     }
     
-    func loadItems(with request: NSFetchRequest<Category> = Category.fetchRequest()) {        
-        do{
-            myArray = try context.fetch(request)
-        } catch {
-            print("Error fetching items \(error)")
-        }
-        
+    func loadCategories() {
+        categories = realm.objects(Category.self)
         tableView.reloadData()
-        
     }
     
     //MARK: - Add New Categories
@@ -63,11 +59,10 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Category", style: .default) { (action) in
             //what happens when user clicks "add"
             
-            let newItem = Category(context: self.context)
-            newItem.name = textEntered.text!
+            let newCategory = Category()
+            newCategory.name = textEntered.text!
             
-            self.myArray.append(newItem)
-            self.saveItems()
+            self.save(category: newCategory)
             self.tableView.reloadData()
             
         }
@@ -90,7 +85,7 @@ class CategoryViewController: UITableViewController {
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let destinationVC = segue.destination as! ToDoListViewController
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.selectedCategory = myArray[indexPath.row]
+            destinationVC.selectedCategory = categories?[indexPath.row]
         }
     }
 }
